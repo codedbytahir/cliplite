@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClipLite — The Clipboard Manager That Doesn't Suck</title>
+<meta name="description" content="ClipLite is a free, open-source, cross-platform clipboard manager. Never lose what you copy. Works on Mac, Windows, and Linux.">
+<meta name="theme-color" content="#6366f1">
+<meta property="og:title" content="ClipLite — Open Source Clipboard Manager">
+<meta property="og:description" content="Free. Cross-platform. Beautiful. Never lose what you copy again.">
+<meta property="og:image" content="https://raw.githubusercontent.com/codedbytahir/cliplite/main/src-tauri/icons/icon.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<style>
+  :root {
+    --bg: #0b1120;
+    --surface: #111827;
+    --card: #1a2332;
+    --border: #1e293b;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --accent-glow: rgba(99,102,241,0.15);
+    --red: #ef4444;
+    --green: #22c55e;
+    --amber: #f59e0b;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { overflow-x: hidden; }
+
+  /* ─── Nav ─── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(11,17,32,0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 24px;
+    height: 56px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; letter-spacing:-0.3px; color:var(--text); text-decoration:none; }
+  .nav-logo svg { width:24px; height:24px; }
+  .nav-links { display:flex; gap:24px; align-items:center; }
+  .nav-links a { color: var(--text2); text-decoration:none; font-size:14px; font-weight:500; transition:color .15s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-gh {
+    display:flex; align-items:center; gap:6px; padding:6px 14px;
+    border:1px solid var(--border); border-radius:8px;
+    color:var(--text2); font-size:13px; font-weight:500; text-decoration:none;
+    transition: all .15s;
+  }
+  .nav-gh:hover { border-color:var(--accent); color:var(--accent2); }
+
+  /* ─── Hero ─── */
+  .hero {
+    padding: 140px 24px 80px;
+    text-align: center; max-width: 900px; margin: 0 auto;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none; z-index: -1;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 100px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 13px; color: var(--text2); font-weight: 500; margin-bottom: 32px;
+  }
+  .hero-badge .dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+  .hero h1 {
+    font-size: clamp(40px, 7vw, 72px); font-weight: 800;
+    line-height: 1.05; letter-spacing: -2px; margin-bottom: 20px;
+  }
+  .hero h1 span { color: var(--accent2); }
+  .hero p {
+    font-size: clamp(17px, 2.5vw, 20px); color: var(--text2);
+    max-width: 600px; margin: 0 auto 40px; line-height: 1.6;
+  }
+  .hero-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 28px; border-radius:10px; font-size:15px; font-weight:600;
+    text-decoration:none; transition: all .2s; cursor:pointer;
+  }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 0 30px var(--accent-glow);
+  }
+  .btn-primary:hover { background: #4f46e5; transform: translateY(-1px); box-shadow: 0 4px 40px rgba(99,102,241,0.3); }
+  .btn-outline { background:transparent; color:var(--text); border:1px solid var(--border); }
+  .btn-outline:hover { border-color:var(--accent); color:var(--accent2); }
+
+  /* ─── Mac Window Mock ─── */
+  .window-mock {
+    max-width: 700px; margin: 0 auto 0;
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 25px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset;
+    background: var(--surface);
+    transform: perspective(1000px) rotateX(2deg);
+    position: relative; top: -20px;
+  }
+  .window-bar {
+    display:flex; align-items:center; gap:8px;
+    padding:14px 16px; border-bottom:1px solid var(--border);
+    background: var(--card);
+  }
+  .window-dot { width:11px; height:11px; border-radius:50%; }
+  .window-dot.r { background:#ef4444; } .window-dot.y { background:#f59e0b; } .window-dot.g { background:#22c55e; }
+  .window-title {
+    flex:1; text-align:center; font-size:12px; color:var(--text3); font-weight:500; letter-spacing:0.3px;
+  }
+  .window-body { display:flex; }
+  .window-sidebar {
+    width: 200px; border-right:1px solid var(--border); padding:16px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .window-main { flex:1; padding:12px 16px; display:flex; flex-direction:column; gap:6px; }
+  .ws-item {
+    padding:8px 12px; border-radius:6px; font-size:13px; font-weight:500; cursor:default;
+    color: var(--text2); transition: all .15s;
+  }
+  .ws-item.active { background: var(--accent); color: #fff; }
+  .ws-search {
+    padding:10px 14px; border-radius:8px; font-size:13px;
+    background: var(--card); border:1px solid var(--border); color:var(--text2);
+    margin-bottom:6px;
+  }
+  .ws-clip {
+    padding:10px 14px; border-radius:8px; font-size:12px; line-height:1.4;
+    background: var(--card); color: var(--text2);
+    border-left:3px solid transparent; transition: all .15s; cursor:default;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .ws-clip.active { border-left-color:var(--accent); background: rgba(99,102,241,0.08); }
+  .ws-time { font-size:10px; color:var(--text3); white-space:nowrap; margin-left:12px; }
+  .ws-clip .pin { color:var(--amber); font-size:11px; }
+
+  /* ─── Features Grid ─── */
+  .section {
+    max-width: 1200px; margin: 0 auto; padding: 100px 24px;
+  }
+  .section-label {
+    display:inline-block; font-size:12px; font-weight:700; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--accent2); margin-bottom:16px;
+  }
+  .section h2 {
+    font-size: clamp(28px, 4vw, 44px); font-weight:800;
+    letter-spacing: -1px; margin-bottom: 16px; line-height: 1.2;
+  }
+  .section p.subtitle { color: var(--text2); font-size:17px; max-width:600px; margin-bottom:48px; line-height:1.6; }
+  .features {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px;
+    transition: all .25s;
+    position: relative; overflow: hidden;
+  }
+  .feature-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  }
+  .feature-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom: 18px; font-size: 20px;
+    background: rgba(99,102,241,0.1); color: var(--accent2);
+  }
+  .feature-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; letter-spacing:-0.2px; }
+  .feature-card p { color: var(--text2); font-size: 14px; line-height: 1.6; }
+
+  /* ─── Comparison Table ─── */
+  .table-wrap {
+    overflow-x: auto; margin-top: 32px;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--surface);
+  }
+  .table-wrap table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+  }
+  .table-wrap th, .table-wrap td {
+    padding: 14px 20px; text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .table-wrap th {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text3);
+  }
+  .table-wrap td { color: var(--text2); }
+  .table-wrap tr:last-child td { border-bottom: none; }
+  .table-wrap .hl { background: rgba(99,102,241,0.06); }
+  .check { color: var(--green); font-weight:700; }
+  .cross { color: var(--text3); }
+  .price { color: var(--red); font-weight:600; }
+
+  /* ─── CTA ─── */
+  .cta {
+    text-align: center; padding: 120px 24px;
+    max-width: 700px; margin: 0 auto;
+  }
+  .cta h2 {
+    font-size: clamp(28px, 5vw, 48px); font-weight:800;
+    letter-spacing: -1px; margin-bottom: 16px;
+  }
+  .cta p { color: var(--text2); font-size: 17px; margin-bottom: 36px; line-height:1.6; }
+  .cta-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+  /* ─── Footer ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 24px;
+    text-align: center; color: var(--text3); font-size:13px;
+  }
+  footer a { color: var(--text2); text-decoration:none; }
+  footer a:hover { color: var(--accent2); }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 768px) {
+    .window-mock { transform: none; top: 0; border-radius: 8px; }
+    .window-sidebar { display:none; }
+    .nav-links a:not(.nav-gh) { display:none; }
+    .features { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>
+      </svg>
+      ClipLite
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#compare">Compare</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/codedbytahir/cliplite" class="nav-gh">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"/></svg>
+        Star on GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">
+    <span class="dot"></span> Open Source · Apache 2.0 · v1.0
+  </div>
+  <h1>Your clipboard.<br>Finally <span>under control</span>.</h1>
+  <p>ClipLite remembers everything you copy. Search, pin, paste — instantly. Free, open-source, and works on Mac, Windows, and Linux.</p>
+  <div class="hero-btns">
+    <a href="https://github.com/codedbytahir/cliplite" class="btn btn-primary">
+      <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"/></svg>
+      View on GitHub
+    </a>
+    <a href="#install" class="btn btn-outline">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download &amp; Install
+    </a>
+  </div>
+</section>
+
+<div class="window-mock">
+  <div class="window-bar">
+    <span class="window-dot r"></span><span class="window-dot y"></span><span class="window-dot g"></span>
+    <span class="window-title">ClipLite</span>
+  </div>
+  <div class="window-body">
+    <div class="window-sidebar">
+      <div class="ws-item active">📋 All Clips</div>
+      <div class="ws-item">📌 Pinned</div>
+      <div class="ws-item">🖼️ Images</div>
+    </div>
+    <div class="window-main">
+      <div class="ws-search">🔍  Search history…</div>
+      <div class="ws-clip active">
+        <span>git commit -m "Initial release"</span>
+        <span class="ws-time">2m</span>
+      </div>
+      <div class="ws-clip">
+        <span>https://github.com/codedbytahir/cliplite</span>
+        <span class="ws-time">12m</span>
+      </div>
+      <div class="ws-clip">
+        <span>npm run tauri build --release</span>
+        <span class="ws-time">35m</span>
+      </div>
+      <div class="ws-clip">
+        <span>clipboard • noun: a flat rigid sheet for papers</span>
+        <span class="ws-time">1h</span>
+      </div>
+      <div class="ws-clip">
+        <span>export PATH="$HOME/.cargo/bin:$PATH"</span>
+        <span class="ws-time">2h</span>
+        <span class="pin">📌</span>
+      </div>
+      <div class="ws-clip">
+        <span>use std::collections::HashMap;</span>
+        <span class="ws-time">3h</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="section" id="features">
+  <span class="section-label">Features</span>
+  <h2>Everything you need.<br>Nothing you don't.</h2>
+  <p class="subtitle">ClipLite is built for people who copy-paste all day. Developers, writers, designers, support teams — everyone benefits from a clipboard that actually works.</p>
+
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">⌨️</div>
+      <h3>Keyboard-First</h3>
+      <p>Press <code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px;font-size:12px;">Ctrl+Shift+V</code> anywhere. Navigate with arrows. Paste with Enter. Never touch your mouse.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <h3>Instant Search</h3>
+      <p>Type to filter your entire clipboard history. Find that URL you copied three days ago in under a second.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📌</div>
+      <h3>Pin & Organize</h3>
+      <p>Pin frequently-used snippets. They stay forever, even when old clips are automatically cleaned up.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌙</div>
+      <h3>Dark Mode</h3>
+      <p>Respects your system preference. Or toggle manually. Looks stunning either way.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🖥️</div>
+      <h3>Truly Cross-Platform</h3>
+      <p>macOS, Windows, and Linux — identical experience. Built with Tauri for native performance on every OS.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>100% Local</h3>
+      <p>Everything stays on your machine. No cloud, no telemetry, no accounts. Your clipboard is yours.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="compare">
+  <span class="section-label">Comparison</span>
+  <h2>How ClipLite stacks up.</h2>
+  <p class="subtitle">There are other clipboard managers. None do everything ClipLite does — for free.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th><th>ClipLite</th><th>Paste</th><th>CopyQ</th><th>Maccy</th><th>Ditto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="hl"><td>Price</td><td class="check">Free</td><td class="price">$29.99/yr</td><td class="check">Free</td><td class="check">Free</td><td class="check">Free</td></tr>
+        <tr><td>Open Source</td><td class="check">✓</td><td class="cross">✗</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr class="hl"><td>Cross-Platform</td><td class="check">✓ Mac/Win/Linux</td><td class="cross">Mac only</td><td class="check">All platforms</td><td class="cross">Mac only</td><td class="cross">Win only</td></tr>
+        <tr><td>Modern UI</td><td class="check">✓ Beautiful</td><td class="check">✓ Beautiful</td><td class="cross">Dated</td><td>Decent</td><td class="cross">Dated</td></tr>
+        <tr class="hl"><td>Keyboard-First</td><td class="check">✓ Full nav</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Built With</td><td>Tauri + Rust</td><td>Swift</td><td>Qt + C++</td><td>Swift</td><td>C++</td></tr>
+        <tr class="hl"><td>Dark Mode</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td>Partial</td><td class="cross">✗</td></tr>
+        <tr><td>Binary Size</td><td class="check">~10 MB</td><td>~15 MB</td><td>~40 MB</td><td>~5 MB</td><td>~8 MB</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" id="install">
+  <span class="section-label">Get Started</span>
+  <h2>Install in 60 seconds.</h2>
+  <p class="subtitle">Pick your OS. Follow the three steps. Start pasting like a pro.</p>
+
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🍎</div>
+      <h3>macOS</h3>
+      <p style="font-family:monospace;font-size:13px;color:var(--text2);line-height:2;">
+        1. Install <a href="https://rustup.rs" style="color:var(--accent2);">Rust</a> &amp; <a href="https://nodejs.org" style="color:var(--accent2);">Node.js</a><br>
+        2. <code style="background:var(--card);padding:2px 8px;border-radius:4px;">git clone https://github.com/codedbytahir/cliplite</code><br>
+        3. <code style="background:var(--card);padding:2px 8px;border-radius:4px;">cd cliplite && npm install && npm run tauri dev</code>
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🪟</div>
+      <h3>Windows</h3>
+      <p style="font-family:monospace;font-size:13px;color:var(--text2);line-height:2;">
+        1. Install <a href="https://rustup.rs" style="color:var(--accent2);">Rust</a> &amp; <a href="https://nodejs.org" style="color:var(--accent2);">Node.js</a><br>
+        2. Install <a href="https://visualstudio.microsoft.com/visual-cpp-build-tools/" style="color:var(--accent2);">VS C++ Build Tools</a><br>
+        3. Same clone &amp; run as macOS
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🐧</div>
+      <h3>Linux</h3>
+      <p style="font-family:monospace;font-size:13px;color:var(--text2);line-height:2;">
+        1. Install system deps:<br>
+        <code style="background:var(--card);padding:2px 8px;border-radius:4px;">sudo apt install libwebkit2gtk-4.1-dev libxdo-dev libappindicator3-dev librsvg2-dev</code><br>
+        2. Same clone &amp; run as macOS
+      </p>
+    </div>
+  </div>
+
+  <div style="margin-top:48px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:36px;">
+    <h3 style="font-size:20px;font-weight:700;margin-bottom:16px;">📦 Coming Soon: Pre-Built Downloads</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.6;">We're working on GitHub Actions CI/CD to auto-build .dmg, .msi, .AppImage, and .deb packages. For now, building from source takes under 2 minutes.</p>
+  </div>
+</section>
+
+<section class="section" id="shortcuts">
+  <span class="section-label">Cheat Sheet</span>
+  <h2>Keyboard shortcuts.</h2>
+  <p class="subtitle">Everything you can do with ClipLite — without touching the mouse.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td><kbd style="background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:13px;font-family:monospace;">Ctrl + Shift + V</kbd></td><td>Open / Close ClipLite</td></tr>
+        <tr><td><kbd style="background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:13px;font-family:monospace;">↑ ↓</kbd></td><td>Navigate through clips</td></tr>
+        <tr class="hl"><td><kbd style="background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:13px;font-family:monospace;">Enter</kbd></td><td>Paste selected clip</td></tr>
+        <tr><td><kbd style="background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:13px;font-family:monospace;">Delete / Backspace</kbd></td><td>Delete selected clip</td></tr>
+        <tr class="hl"><td><kbd style="background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:13px;font-family:monospace;">Escape</kbd></td><td>Close ClipLite</td></tr>
+        <tr><td>Type anything</td><td>Search clipboard history</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Ready to <span style="color:var(--accent2);">upgrade</span> your clipboard?</h2>
+  <p>Free forever. Open source. Built with Rust &amp; React. Join the community and never lose a copied thing again.</p>
+  <div class="cta-btns">
+    <a href="https://github.com/codedbytahir/cliplite" class="btn btn-primary">
+      <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"/></svg>
+      GitHub Repo
+    </a>
+    <a href="https://github.com/codedbytahir/cliplite/issues" class="btn btn-outline">
+      💬 Report a Bug
+    </a>
+  </div>
+</section>
+
+<footer>
+  <p>ClipLite · <a href="https://github.com/codedbytahir/cliplite/blob/main/LICENSE">Apache 2.0</a> · <a href="https://github.com/codedbytahir/cliplite">GitHub</a></p>
+  <p style="margin-top:6px;color:var(--text3);">Made with ❤️ by AI &amp; the open-source community. Design informed by <a href="https://skills.sh">skills.sh</a>.</p>
+</footer>
+
+</body>
+</html>
